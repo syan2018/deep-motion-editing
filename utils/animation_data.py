@@ -139,7 +139,7 @@ def phase_from_ft(foot_contact, is_debug=False):
     num_circles = 0
     circle_length = 0
     total_length = len(foot_contact)
-    ft = foot_contact[:, [0, 2]].astype(np.int)
+    ft = foot_contact[:, [0, 2]].astype(np.int32)
     ft_start = np.zeros((total_length, 2))
     phases = np.zeros((total_length, 1))
 
@@ -408,7 +408,7 @@ def test_all(args):
         return np.sum((a - b) ** 2)
 
     def test_phase_from_ft():
-        pace = np.zeros((100, 1), dtype=np.int)
+        pace = np.zeros((100, 1), dtype=np.int32)
         pace[::8] = 1
         left = pace[:-4]
         right = pace[4:]

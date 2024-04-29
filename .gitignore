@@ -111,5 +111,8 @@ venv.bak/
 # result and datasets for retargeting
 retargeting/datasets/Mixamo/*
 retargeting/datasets/test_set.tar.bz2
+retargeting/datasets/training_set.tar.bz2
 retargeting/pretrained/results/*
 retargeting/examples
+
+retargeting/training

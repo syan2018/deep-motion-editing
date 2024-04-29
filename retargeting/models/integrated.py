@@ -37,7 +37,12 @@ class IntegratedModel:
         else: self.height_para = []
 
         if not args.simple_operator:
-            self.auto_encoder = AE(args, topology=self.edges).to(device)
+            # 等跑通之后，将VQ的权重放到外面的框架里去
+
+            # self.auto_encoder = AE(args, topology=self.edges).to(device)
+            from models.enc_and_dec_VQ import VQVAE
+            self.auto_encoder = VQVAE(args, self.edges).to(device)
+
             self.discriminator = Discriminator(args, self.edges).to(device)
             self.static_encoder = StaticEncoder(args, self.edges).to(device)
         else:

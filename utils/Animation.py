@@ -1,5 +1,8 @@
 import operator
 
+import os
+os.environ['NUMPY_EXPERIMENTAL_DTYPE_API'] = '1'
+
 import numpy as np
 import numpy.core.umath_tests as ut
 
