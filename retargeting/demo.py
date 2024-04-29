@@ -34,6 +34,7 @@ def example(src_name, dest_name, bvh_name, test_type, output_path):
     cmd = 'python eval_single_pair.py --input_bvh={} --target_bvh={} --output_filename={} --test_type={}'.format(
         input_file, ref_file, pjoin(output_path, 'result.bvh'), test_type
     )
+    print(cmd)
     os.system(cmd)
 
     fix_foot_contact(pjoin(output_path, 'result.bvh'),

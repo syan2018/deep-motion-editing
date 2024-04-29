@@ -89,18 +89,29 @@ class GAN_model(BaseModel):
         self.rnd_idx = []
 
         for i in range(self.n_topology):
+            # 编码获得偏移的 deep 表示
             self.offset_repr.append(self.models[i].static_encoder(self.dataset.offsets[i]))
 
         # reconstruct
+        # 重建训练
         for i in range(self.n_topology):
+
+            # 对于每个拓扑拿到输入 motion（这里的motion实际上应该是拓扑下的所有motion）
             motion, offset_idx = self.motions_input[i]
             motion = motion.to(self.device)
             self.motions.append(motion)
 
             motion_denorm = self.dataset.denorm(i, offset_idx, motion)
             self.motion_denorm.append(motion_denorm)
+
+            # 获得 motion 对应的 offsets 偏移特征
             offsets = [self.offset_repr[i][p][offset_idx] for p in range(self.args.num_layers + 1)]
+            # 通过并入静态偏移特征，结合运动特征进入编码器
+            # 获得最终的动态隐含层和输出
+            # 获取前向的隐含层有啥用？？？
             latent, res = self.models[i].auto_encoder(motion, offsets)
+
+            # 通过标准化和输出环节获取最终的输出
             res_denorm = self.dataset.denorm(i, offset_idx, res)
             res_pos = self.models[i].fk.forward_from_raw(res_denorm, self.dataset.offsets[i][offset_idx])
             self.res_pos.append(res_pos)
@@ -108,6 +119,7 @@ class GAN_model(BaseModel):
             self.res.append(res)
             self.res_denorm.append(res_denorm)
 
+            # 获取真实位置
             pos = self.models[i].fk.forward_from_raw(motion_denorm, self.dataset.offsets[i][offset_idx]).detach()
             ee = get_ee(pos, self.dataset.joint_topologies[i], self.dataset.ee_ids[i],
                         velo=self.args.ee_velo, from_root=self.args.ee_from_root)
@@ -118,19 +130,31 @@ class GAN_model(BaseModel):
             self.ee_ref.append(ee)
 
         # retargeting
+        # 重定向训练
         for src in range(self.n_topology):
             for dst in range(self.n_topology):
+
                 if self.is_train:
                     rnd_idx = torch.randint(len(self.character_names[dst]), (self.latents[src].shape[0],))
                 else:
                     rnd_idx = list(range(self.latents[0].shape[0]))
                 self.rnd_idx.append(rnd_idx)
+
+                # 获取输出骨骼的静态偏移特征
                 dst_offsets_repr = [self.offset_repr[dst][p][rnd_idx] for p in range(self.args.num_layers + 1)]
+
+                # 逆向编解码过程
+                # 从前向过程中构建的隐含层信息开始，进行前后传导
+                # 尝试直接decode成最终结果
                 fake_res = self.models[dst].auto_encoder.dec(self.latents[src], dst_offsets_repr)
+
+                # 根据默认权重，尝试根据结果反求对应隐含层
                 fake_latent = self.models[dst].auto_encoder.enc(fake_res, dst_offsets_repr)
 
                 fake_res_denorm = self.dataset.denorm(dst, rnd_idx, fake_res)
                 fake_pos = self.models[dst].fk.forward_from_raw(fake_res_denorm, self.dataset.offsets[dst][rnd_idx])
+
+                # 末端效应器相关计算
                 fake_ee = get_ee(fake_pos, self.dataset.joint_topologies[dst], self.dataset.ee_ids[dst],
                                  velo=self.args.ee_velo, from_root=self.args.ee_from_root)
                 height = self.models[dst].height[rnd_idx]
@@ -184,6 +208,8 @@ class GAN_model(BaseModel):
         self.loss_G = 0
         self.ee_loss = 0
         self.loss_G_total = 0
+
+
         for i in range(self.n_topology):
             rec_loss1 = self.criterion_rec(self.motions[i], self.res[i])
             self.loss_recoder.add_scalar('rec_loss_quater_{}'.format(i), rec_loss1)
@@ -237,12 +263,14 @@ class GAN_model(BaseModel):
         self.forward()
 
         # update Gs
+        # 更新生成器参数
         self.discriminator_requires_grad_(False)
         self.optimizerG.zero_grad()
         self.backward_G()
         self.optimizerG.step()
 
         # update Ds
+        # 更新判别器参数
         if self.args.gan_mode != 'none':
             self.discriminator_requires_grad_(True)
             self.optimizerD.zero_grad()
