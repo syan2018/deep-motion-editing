@@ -79,7 +79,13 @@ class QuantizeEMAReset(nn.Module):
         x = x.view(-1, x.shape[-1])
         return x
 
+    def reshape_then_quantize(self, x):
+        x = self.preprocess(x)
+        code_idx = self.quantize(x)
+        return code_idx
+
     def quantize(self, x):
+
         # Calculate latent code x_l
         k_w = self.codebook.t()
         distance = torch.sum(x ** 2, dim=-1, keepdim=True) - 2 * torch.matmul(x, k_w) + torch.sum(k_w ** 2, dim=0,

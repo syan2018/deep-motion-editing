@@ -177,7 +177,18 @@ class GAN_model(BaseModel):
                 fake_res = self.models[dst].auto_encoder.dec(latent, dst_offsets_repr)
 
                 # 根据默认权重，尝试根据结果反求对应隐含层
+                # print("print fake_res shape:", fake_res.shape)
                 fake_latent = self.models[dst].auto_encoder.enc(fake_res, dst_offsets_repr)
+                fake_latent = self.quantizer.reshape_then_quantize(fake_latent)
+                
+                N, C, L = latent.shape
+
+                fake_latent = fake_latent.view(N, L)
+                # 然后，在第二个维度插入一个大小为 1 的新维度，以得到最终形状 [256, 1, 16]
+                fake_latent = fake_latent.unsqueeze(1)
+
+
+
 
                 fake_res_denorm = self.dataset.denorm(dst, rnd_idx, fake_res)
                 fake_pos = self.models[dst].fk.forward_from_raw(fake_res_denorm, self.dataset.offsets[dst][rnd_idx])
@@ -263,6 +274,9 @@ class GAN_model(BaseModel):
         p = 0
         for src in range(self.n_topology):
             for dst in range(self.n_topology):
+                # print(self.latents[src].shape)
+                # print(self.fake_latent[p].shape)
+                # TODO: 替换criterion_cycle的损失类型
                 cycle_loss = self.criterion_cycle(self.latents[src], self.fake_latent[p])
                 self.loss_recoder.add_scalar('cycle_loss_{}_{}'.format(src, dst), cycle_loss)
                 self.cycle_loss += cycle_loss
