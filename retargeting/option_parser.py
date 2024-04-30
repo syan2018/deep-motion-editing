@@ -53,6 +53,7 @@ def get_parser():
     parser.add_argument('--eval_seq', type=int, default=0)
     parser.add_argument('--code_num', type=int, default=512)
     parser.add_argument('--quantizer', type=str, default='ema_reset')
+    parser.add_argument('--d_loss_thread', type=float, default=0.4)
     return parser
 
 
