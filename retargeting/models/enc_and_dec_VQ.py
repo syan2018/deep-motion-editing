@@ -182,13 +182,13 @@ class VQVAE(nn.Module):
         # print("---------------")
 
         result = self.dec(x_d, offset)
-        return code_idx, result
+        return code_idx, result, loss, perplexity
 
     def encode(self, input, offset=None):
         """
         将标准动作转换为编码向量
         输入维度为 (N, C, L)
-        输出维度为 (N, _L)
+        输出维度为 (N * L)
         (由于Encoder，会有缩短时间步长的情况)
         """
         #

@@ -111,6 +111,7 @@ class GAN_model(BaseModel):
         self.motions = []
         self.motion_denorm = []
         self.rnd_idx = []
+        self.vq_rec_loss = []
 
         for i in range(self.n_topology):
             # 编码获得偏移的 deep 表示
@@ -133,7 +134,12 @@ class GAN_model(BaseModel):
             
             # 执行VQVAE的Forward，获取自编码结果和隐含变量
             # 此处latent对换为code_idx
-            latent, res = self.models[i].auto_encoder(motion, offsets)
+            latent, res, vq_loss, vq_perplexity = self.models[i].auto_encoder(motion, offsets)
+
+            # TODO: 感觉原则上应该有个更阳间的损失记录方式
+            self.vq_rec_loss.append(vq_loss)
+            self.vq_rec_loss.append(vq_perplexity)
+
 
             # 通过标准化和输出环节获取最终的输出
             res_denorm = self.dataset.denorm(i, offset_idx, res)
@@ -186,8 +192,6 @@ class GAN_model(BaseModel):
                 fake_latent = fake_latent.view(N, L)
                 # 然后，在第二个维度插入一个大小为 1 的新维度，以得到最终形状 [256, 1, 16]
                 fake_latent = fake_latent.unsqueeze(1)
-
-
 
 
                 fake_res_denorm = self.dataset.denorm(dst, rnd_idx, fake_res)
@@ -271,13 +275,30 @@ class GAN_model(BaseModel):
             self.rec_losses.append(rec_loss)
             self.rec_loss += rec_loss
 
+        for vq_loss in self.vq_rec_loss:
+            self.rec_loss += vq_loss
+
         p = 0
         for src in range(self.n_topology):
             for dst in range(self.n_topology):
                 # print(self.latents[src].shape)
                 # print(self.fake_latent[p].shape)
                 # TODO: 替换criterion_cycle的损失类型
-                cycle_loss = self.criterion_cycle(self.latents[src], self.fake_latent[p])
+                # TODO：VQ的Loss好像没传出来
+
+                latent = self.quantizer.dequantize(self.latents[src])
+                fake_latent = self.quantizer.dequantize(self.fake_latent[p])
+                # print(latent.shape)
+
+                cycle_loss = self.criterion_cycle(latent, fake_latent)
+
+                # if self.args.use_vq:
+                #     latent = self.quantizer.dequantize(self.latents[src])
+                #     fake_latent = self.quantizer.dequantize(self.fake_latent[p])
+                #     cycle_loss = self.criterion_cycle(latent, fake_latent)
+                # else:
+                #     cycle_loss = self.criterion_cycle(self.latents[src], self.fake_latent[p])
+
                 self.loss_recoder.add_scalar('cycle_loss_{}_{}'.format(src, dst), cycle_loss)
                 self.cycle_loss += cycle_loss
 
@@ -294,6 +315,9 @@ class GAN_model(BaseModel):
                     self.loss_G += loss_G
 
                 p += 1
+
+
+
 
         self.loss_G_total = self.rec_loss * self.args.lambda_rec  + \
                             self.cycle_loss * self.args.lambda_cycle / 2 + \
@@ -317,7 +341,9 @@ class GAN_model(BaseModel):
             self.discriminator_requires_grad_(True)
             self.optimizerD.zero_grad()
             self.backward_D()
-            self.optimizerD.step()
+            # 保护措施，避免生成器被太强的判别器摁死
+            if self.loss_D > 0.2 or self.loss_D * 2 > self.loss_G or self.epoch_cnt > 1000:
+                self.optimizerD.step()
         else:
             self.loss_D = torch.tensor(0)
 
