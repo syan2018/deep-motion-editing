@@ -120,7 +120,7 @@ class QuantizeEMAReset(nn.Module):
         # Postprocess
         x_d = x_d.view(N, T, -1).permute(0, 2, 1).contiguous()  # (N, DIM, T)
 
-        return x_d, commit_loss, perplexity
+        return x_d, commit_loss, perplexity ,code_idx
 
 
 class Quantizer(nn.Module):

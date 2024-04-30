@@ -130,9 +130,9 @@ class GAN_model(BaseModel):
 
             # 获得 motion 对应的 offsets 偏移特征
             offsets = [self.offset_repr[i][p][offset_idx] for p in range(self.args.num_layers + 1)]
-            # 通过并入静态偏移特征，结合运动特征进入编码器
-            # 获得最终的动态隐含层和输出
-            # 获取前向的隐含层有啥用？？？
+            
+            # 执行VQVAE的Forward，获取自编码结果和隐含变量
+            # 此处latent对换为code_idx
             latent, res = self.models[i].auto_encoder(motion, offsets)
 
             # 通过标准化和输出环节获取最终的输出
@@ -170,7 +170,11 @@ class GAN_model(BaseModel):
                 # 逆向编解码过程
                 # 从前向过程中构建的隐含层信息开始，进行前后传导
                 # 尝试直接decode成最终结果
-                fake_res = self.models[dst].auto_encoder.dec(self.latents[src], dst_offsets_repr)
+                latent = self.quantizer.dequantize(self.latents[src])
+                latent = latent.squeeze().transpose(1, 2)
+                # print(latent.shape)
+
+                fake_res = self.models[dst].auto_encoder.dec(latent, dst_offsets_repr)
 
                 # 根据默认权重，尝试根据结果反求对应隐含层
                 fake_latent = self.models[dst].auto_encoder.enc(fake_res, dst_offsets_repr)

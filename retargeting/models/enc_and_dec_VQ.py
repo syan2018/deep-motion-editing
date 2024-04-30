@@ -168,9 +168,21 @@ class VQVAE(nn.Module):
     def forward(self, input, offset=None):
         latent = self.enc(input, offset)
         # latent = (N, C, L) Batch Size, Channel Size, Seq Length
-        z, loss, perplexity = self.quantizer(latent)
-        result = self.dec(z, offset)
-        return latent, result
+        N, C, L = latent.shape
+      
+        x_d, loss, perplexity, code_idx = self.quantizer(latent)
+
+        code_idx = code_idx.view(N, L)
+        # 然后，在第二个维度插入一个大小为 1 的新维度，以得到最终形状 [256, 1, 16]
+        code_idx = code_idx.unsqueeze(1)
+
+        # print("-------- print latent and code shape -------")
+        # print(latent.shape)     # torch.Size([256, 112, 16])
+        # print(code_idx.shape)   # torch.Size([4096])  == torch.Size([256, 16])
+        # print("---------------")
+
+        result = self.dec(x_d, offset)
+        return code_idx, result
 
     def encode(self, input, offset=None):
         """
