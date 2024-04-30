@@ -150,32 +150,20 @@ class Decoder(nn.Module):
 
 class VQVAE(nn.Module):
     def __init__(self, args, topology,
-                 quantizer: str = "ema_reset",
-                 code_num=512,
+                 quantizer: nn.Module,
                  ):
         super(VQVAE, self).__init__()
 
         # code_num 为码本大小
-        self.code_num = code_num
-
+        self.code_num = args.code_num
         # code_dim 为输入编码维度
-        # 默认维度为 7 * 16 = 112
-        # 实际维度为 7 * base_channel * 2 ^ (num_layers)
-        # 对应默认为 7 * 4 * 2 ^ 2 = 112
         channel_base = 4 if args.rotation == 'quaternion' else 3
         self.code_dim = 7 * channel_base * 2 ** args.num_layers
+        self.quantizer = quantizer
 
         self.enc = Encoder(args, topology)
         self.dec = Decoder(args, self.enc)
 
-        if quantizer == "ema_reset":
-            self.quantizer = QuantizeEMAReset(self.code_num, self.code_dim, mu=0.99)
-        elif quantizer == "orig":
-            self.quantizer = Quantizer(self.code_num, self.code_dim, beta=1.0)
-        elif quantizer == "ema":
-            self.quantizer = QuantizeEMA(self.code_num, self.code_dim, mu=0.99)
-        elif quantizer == "reset":
-            self.quantizer = QuantizeReset(self.code_num, self.code_dim)
 
     def forward(self, input, offset=None):
         latent = self.enc(input, offset)

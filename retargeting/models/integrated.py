@@ -10,11 +10,13 @@ import os
 
 class IntegratedModel:
     # origin_offsets should have shape num_skeleton * J * 3
-    def __init__(self, args, joint_topology, origin_offsets: torch.Tensor, device, characters):
+    def __init__(self, args, joint_topology, origin_offsets: torch.Tensor, device, characters, quantizer):
         self.args = args
         self.joint_topology = joint_topology
         self.edges = build_edge_topology(joint_topology, torch.zeros((len(joint_topology), 3)))
         self.fk = ForwardKinematics(args, self.edges)
+
+        self.quantizer = quantizer
 
         self.height = [] # for normalize ee_loss
         self.real_height = []
@@ -41,7 +43,7 @@ class IntegratedModel:
 
             # self.auto_encoder = AE(args, topology=self.edges).to(device)
             from models.enc_and_dec_VQ import VQVAE
-            self.auto_encoder = VQVAE(args, self.edges).to(device)
+            self.auto_encoder = VQVAE(args, self.edges, self.quantizer).to(device)
 
             self.discriminator = Discriminator(args, self.edges).to(device)
             self.static_encoder = StaticEncoder(args, self.edges).to(device)

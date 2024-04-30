@@ -19,8 +19,32 @@ class GAN_model(BaseModel):
         self.G_para = []
         self.args = args
 
+        # 设置码本相关
+        self.code_num = args.code_num
+
+        # code_dim 为输入编码维度
+        # 默认维度为 7 * 16 = 112
+        # 实际维度为 7 * base_channel * 2 ^ num_layers
+        # 对应默认为 7 * 4 * 2 ^ 2 = 112
+        channel_base = 4 if args.rotation == 'quaternion' else 3
+        self.code_dim = 7 * channel_base * 2 ** args.num_layers
+
+        # 选择量化器
+        from .tools.quantize_cnn import QuantizeEMAReset, Quantizer, QuantizeEMA, QuantizeReset
+        quantizer = args.quantizer
+        if quantizer == "ema_reset":
+            self.quantizer = QuantizeEMAReset(self.code_num, self.code_dim, mu=0.99)
+        elif quantizer == "orig":
+            self.quantizer = Quantizer(self.code_num, self.code_dim, beta=1.0)
+        elif quantizer == "ema":
+            self.quantizer = QuantizeEMA(self.code_num, self.code_dim, mu=0.99)
+        elif quantizer == "reset":
+            self.quantizer = QuantizeReset(self.code_num, self.code_dim)
+
+        # 创建不同拓扑的模型
         for i in range(self.n_topology):
-            model = IntegratedModel(args, dataset.joint_topologies[i], None, self.device, character_names[i])
+            model = IntegratedModel(args, dataset.joint_topologies[i], None,
+                                    self.device, character_names[i], self.quantizer)
             self.models.append(model)
             self.D_para += model.D_parameters()
             self.G_para += model.G_parameters()

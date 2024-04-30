@@ -51,6 +51,7 @@ def get_parser():
     parser.add_argument('--simple_operator', type=int, default=0)
     parser.add_argument('--use_sep_ee', type=int, default=0)
     parser.add_argument('--eval_seq', type=int, default=0)
+    parser.add_argument('--code_num', type=int, default=512)
     return parser
 
 
