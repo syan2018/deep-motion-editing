@@ -342,7 +342,8 @@ class GAN_model(BaseModel):
             self.optimizerD.zero_grad()
             self.backward_D()
             # 保护措施，避免生成器被太强的判别器摁死
-            if self.loss_D > args.d_loss_thread or self.loss_D * 2 > self.loss_G or self.epoch_cnt > 1000:
+            # 据说调整学习率也是一个好策略
+            if self.loss_D > args.d_loss_thread or self.loss_D * 2 > self.loss_G:
                 self.optimizerD.step()
         else:
             self.loss_D = torch.tensor(0)
