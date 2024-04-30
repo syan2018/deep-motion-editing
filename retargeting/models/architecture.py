@@ -365,6 +365,12 @@ class GAN_model(BaseModel):
             try_mkdir(os.path.split(file_name)[0])
             torch.save(optimizer.state_dict(), file_name)
 
+        # 储存 quantizer
+        file_name = os.path.join(self.model_save_dir, 'quantizer/{}/quantizer.pt'.format(self.epoch_cnt))
+        try_mkdir(os.path.split(file_name)[0])
+        torch.save(self.quantizer.state_dict(), file_name)
+
+
     def load(self, epoch=None):
         for i, model in enumerate(self.models):
             model.load(os.path.join(self.model_save_dir, 'topology{}'.format(i)), epoch)
@@ -374,6 +380,12 @@ class GAN_model(BaseModel):
                 file_name = os.path.join(self.model_save_dir, 'optimizers/{}/{}.pt'.format(epoch, i))
                 optimizer.load_state_dict(torch.load(file_name))
         self.epoch_cnt = epoch
+
+        # 读取 quantizer
+        for i, quantizer in enumerate(self.quantizers):
+            file_name = os.path.join(self.model_save_dir, 'quantizers/{}/quantizer.pt'.format(epoch))
+            self.quantizer.load_state_dict(torch.load(file_name))
+
 
     def compute_test_result(self):
         gt_poses = []
